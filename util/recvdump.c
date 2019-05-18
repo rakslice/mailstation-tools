@@ -16,9 +16,13 @@
 #include <err.h>
 #include <unistd.h>
 #include <sys/types.h>
+
+#ifndef __linux__
 #include <machine/sysarch.h>
+#endif
 
 #include "tribble.h"
+#include "progname.h"
 
 void
 usage(void)
@@ -77,6 +81,12 @@ main(int argc, char *argv[])
 	if (i386_iopl(1) != 0)
 		errx(1, "i386_iopl failed (is machdep.allowaperture=1?)");
 #endif
+#endif
+
+#ifdef __linux__
+	ioperm(DATA,1,1);
+	ioperm(STATUS,1,1);
+	ioperm(CONTROL,1,1);
 #endif
 
 	pFile = fopen(fn, "wb");

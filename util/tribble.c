@@ -1,10 +1,21 @@
 #include <stdio.h>
 #include <sys/types.h>
+
+#ifdef __linux__
+#include <sys/io.h>
+#else
 #include <machine/pio.h>
+#endif
 
 #include "tribble.h"
 
 int tribble_debug = 0;
+
+#ifdef __linux__
+#define OUTB(port, data) outb(data, port)
+#else
+#define OUTB outb
+#endif
 
 unsigned int
 havetribble(void)
@@ -12,7 +23,7 @@ havetribble(void)
 	int tries;
 
 	/* drop busy */
-	outb(DATA, 0);
+	OUTB(DATA, 0);
 
 	/* wait for (inverted) strobe */
 	for (tries = 0; tries < 1024; tries++)
@@ -24,7 +35,7 @@ havetribble(void)
 			return 1;
 
 	/* re-raise busy */
-	outb(DATA, bsyout);
+	OUTB(DATA, bsyout);
 
 	return 0;
 }
@@ -36,14 +47,14 @@ recvtribble(void)
 	unsigned int tries;
 
 	/* drop busy */
-	outb(DATA, 0);
+	OUTB(DATA, 0);
 
 	/* wait for (inverted) strobe */
 	tries = 0;
 	while ((inb(STATUS) & stbin) != 0) {
 		if (++tries >= 500000) {
 			/* raise busy/ack */
-			outb(DATA,bsyout);
+			OUTB(DATA,bsyout);
 			return -1;
 		}
 	}
@@ -52,7 +63,7 @@ recvtribble(void)
 	b = (inb(STATUS) >> 3) & tribmask;
 
 	/* raise busy/ack */
-	outb(DATA,bsyout);
+	OUTB(DATA,bsyout);
 
 	/* wait for (inverted) UNstrobe */
 	tries = 0;
@@ -91,7 +102,7 @@ sendtribble(unsigned char b)
 	int ret = 0;
 
 	/* raise busy */
-	outb(DATA, bsyout);
+	OUTB(DATA, bsyout);
 
 	/* wait for mailstation to drop busy */
 	tries = 0;
@@ -103,10 +114,10 @@ sendtribble(unsigned char b)
 	}
 
 	/* send tribble */
-	outb(DATA, b & tribmask);
+	OUTB(DATA, b & tribmask);
 
 	/* strobe */
-	outb(DATA, (b & tribmask) | stbout);
+	OUTB(DATA, (b & tribmask) | stbout);
 
 	/* wait for ack */
 	tries = 0;
@@ -118,12 +129,12 @@ sendtribble(unsigned char b)
 	}
 
 	/* unstrobe */
-	outb(DATA, 0);
+	OUTB(DATA, 0);
 
 sendtribble_out:
 
 	/* raise busy/ack */
-	outb(DATA, bsyout);
+	OUTB(DATA, bsyout);
 
 	return ret;
 }
